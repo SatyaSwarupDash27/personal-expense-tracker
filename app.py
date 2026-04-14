@@ -41,6 +41,11 @@ def load_user(user_id):
 
 # Generate default admin if not exists
 conn = get_db_connection()
+import os
+
+if not os.path.exists("expenses.db") or os.path.getsize("expenses.db") == 0:
+    init_db()
+
 admin = conn.execute('SELECT * FROM users WHERE id = 1').fetchone()
 if not admin:
     # First boot after migration: assign password 'admin'
@@ -48,8 +53,6 @@ if not admin:
                  (1, 'admin', generate_password_hash('admin')))
     conn.commit()
 conn.close()
-
-init_db()
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
