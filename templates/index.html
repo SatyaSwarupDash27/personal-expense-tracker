@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="card total-card hero-card hero-{{ spent_status }}">
+    <h3>Spent This Month</h3>
+    <p class="big-total">₹<span class="counter-value" data-target="{{ current_month_total }}">0</span></p>
+</div>
+
+<div class="card">
+    <h2>Add Expense</h2>
+    <form action="/add" method="POST">
+        <div class="form-row" style="margin-bottom: 16px;">
+            <input type="date" name="date" value="{{ today }}" required style="flex: 1;">
+            <input type="number" name="amount" placeholder="Amount (₹)" min="1" step="0.01" required style="flex: 1;">
+        </div>
+        <div class="form-row" style="margin-bottom: 16px;">
+            <select name="category" id="categorySelect" required style="flex: 1;">
+                <option value="">-- Category --</option>
+                <option>Food</option>
+                <option>Transport</option>
+                <option>Shopping</option>
+                <option>Bills</option>
+                <option>Health</option>
+                <option>Entertainment</option>
+                <option>Other</option>
+            </select>
+            <input type="text" name="custom_category" id="customCategoryInput" placeholder="Specify Custom Category..." style="display: none; flex: 1;">
+            <input type="text" name="description" placeholder="Description (optional)" style="flex: 1;">
+        </div>
+        <div class="form-row" style="justify-content: flex-end;">
+            <button type="submit" class="btn-primary">Add Expense</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Recent Expenses <span class="subtitle">(Page {{ page }} of {{ total_pages }})</span></h2>
+    {% if expenses %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense['date'] }}</td>
+                    <td><span class="badge badge-{{ expense['category']|lower }}">{{ expense['category'] }}</span>
+                    </td>
+                    <td>₹{{ "%.2f"|format(expense['amount']) }}</td>
+                    <td>{{ expense['description'] or '—' }}</td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="/edit/{{ expense['id'] }}" class="btn-edit">Edit</a>
+                            <a href="/delete/{{ expense['id'] }}" class="btn-delete"
+                                onclick="return confirm('Delete this expense?')">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="/?page={{ page - 1 }}">&larr; Previous</a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        {% if page < total_pages %}
+        <a href="/?page={{ page + 1 }}">Next &rarr;</a>
+        {% else %}
+        <div></div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">💸</div>
+        <h3>No expenses yet!</h3>
+        <p>Start tracking your spending by adding your first expense above.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="clear-section">
+    <a href="/clear" class="btn-clear"
+        onclick="return confirm('WARNING: This will permanently delete ALL expenses. Are you sure?')">Clear All Data</a>
+</div>
+
+<script>
+    const categorySelect = document.getElementById('categorySelect');
+    const customCategoryInput = document.getElementById('customCategoryInput');
+    
+    if (categorySelect && customCategoryInput) {
+        categorySelect.addEventListener('change', function() {
+            if (this.value === 'Other') {
+                customCategoryInput.style.display = 'block';
+                customCategoryInput.required = true;
+                customCategoryInput.focus();
+            } else {
+                customCategoryInput.style.display = 'none';
+                customCategoryInput.required = false;
+                customCategoryInput.value = '';
+            }
+        });
+    }
+</script>
+
+<script>
+    // Number Counter Animation
+    document.querySelectorAll('.counter-value').forEach(counter => {
+        const target = parseFloat(counter.getAttribute('data-target'));
+        const duration = 1200;
+        const startTime = performance.now();
+        
+        const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+        
+        function animate(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easedProgress = easeOutQuart(progress);
+            const current = target * easedProgress;
+            
+            counter.textContent = current.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    });
+</script>
+
+{% endblock %}

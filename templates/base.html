@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Expense Tracker{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <!-- Theme Initialization Script (Before body to prevent flashing) -->
+    <script>
+        const getPreferredTheme = () => {
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            if (savedTheme === 'system') {
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            return savedTheme;
+        };
+        
+        document.documentElement.setAttribute('data-theme', getPreferredTheme());
+    </script>
+    
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+<nav>
+    <div class="nav-brand">Expense Tracker</div>
+    <div class="nav-right" style="display: flex; align-items: center;">
+        <select id="themeSwitcher" class="theme-switch" style="margin-right: 16px;">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+        </select>
+
+        <div class="hamburger-menu">
+            <button class="hamburger-btn" aria-label="Menu" tabindex="0">
+                &#9776;
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- Sidebar -->
+<div class="sidebar-overlay"></div>
+<div class="sidebar-panel">
+    <div class="sidebar-header">
+        <h3>Menu</h3>
+        <button class="close-sidebar">&times;</button>
+    </div>
+    <div class="sidebar-links">
+        {% if current_user.is_authenticated %}
+            <p style="padding: 16px 24px; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin: 0; font-weight: 700;">Signed in as: <span style="color: var(--primary);">{{ current_user.username }}</span></p>
+            <a href="/" {% if request.path == '/' %}class="active"{% endif %}>Home</a>
+            <a href="/summary" {% if request.path == '/summary' %}class="active"{% endif %}>Summary</a>
+            <a href="/budgets" {% if request.path == '/budgets' %}class="active"{% endif %}>Budgets</a>
+            <a href="/search" {% if request.path == '/search' %}class="active"{% endif %}>Search</a>
+            <a href="/logout" style="color: #EF4444; margin-top: 24px; border-top: 1px solid var(--border-default);">Log Out</a>
+        {% else %}
+            <a href="/login" {% if request.path == '/login' %}class="active"{% endif %}>Log In</a>
+            <a href="/register" {% if request.path == '/register' %}class="active"{% endif %}>Sign Up</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Toast Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="toast-container" id="toast-container">
+            {% for category, message in messages %}
+                <div class="toast {{ category }}">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+<!-- Scripts -->
+<script>
+    // Theme Switcher Logic
+    const themeSwitcher = document.getElementById('themeSwitcher');
+    
+    // Set intial dropdown value
+    themeSwitcher.value = localStorage.getItem('theme') || 'system';
+    
+    themeSwitcher.addEventListener('change', (e) => {
+        const theme = e.target.value;
+        localStorage.setItem('theme', theme);
+        
+        let activeTheme = theme;
+        if (theme === 'system') {
+            activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', activeTheme);
+        
+        // Dispatch event for any other listeners (e.g. Chart.js)
+        window.dispatchEvent(new Event('themeChanged'));
+    });
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        if (localStorage.getItem('theme') === 'system' || !localStorage.getItem('theme')) {
+            document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+            window.dispatchEvent(new Event('themeChanged'));
+        }
+    });
+
+    // Sidebar Toggle
+    const hamburgerBtn = document.querySelector('.hamburger-btn');
+    const sidebarPanel = document.querySelector('.sidebar-panel');
+    const sidebarOverlay = document.querySelector('.sidebar-overlay');
+    const closeSidebar = document.querySelector('.close-sidebar');
+    
+    const toggleSidebar = () => {
+        sidebarPanel.classList.toggle('open');
+        sidebarOverlay.classList.toggle('open');
+    };
+
+    if (hamburgerBtn && sidebarPanel) {
+        hamburgerBtn.addEventListener('click', toggleSidebar);
+        closeSidebar.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+    }
+
+    // Auto-remove toasts after animation
+    const toastContainer = document.getElementById('toast-container');
+    if (toastContainer) {
+        setTimeout(() => {
+            toastContainer.remove();
+        }, 3500); // 3s delay + 0.5s fadeOut animation
+    }
+</script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>

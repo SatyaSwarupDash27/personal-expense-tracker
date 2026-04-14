@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Expense - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Edit Expense</h2>
+    <form action="/update/{{ expense['id'] }}" method="POST">
+        <div class="form-row">
+            <input type="date" name="date" value="{{ expense['date'] }}" required>
+            <select name="category" id="editCategorySelect" required>
+                <option value="">-- Category --</option>
+                {% for cat in all_categories %}
+                    <option value="{{ cat }}" {% if expense['category'] == cat %}selected{% endif %}>
+                        {{ cat }}
+                    </option>
+                {% endfor %}
+            </select>
+            <input type="text" name="custom_category" id="editCustomCategoryInput" placeholder="Specify Custom Category..." style="display: none; flex: 1;">
+            <input type="number" name="amount" value="{{ expense['amount'] }}" min="1" step="0.01" required>
+            <input type="text" name="description" value="{{ expense['description'] or '' }}" placeholder="Description (optional)">
+            <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+    </form>
+    <br>
+    <a href="/" class="btn-secondary">← Cancel</a>
+</div>
+
+<script>
+    const editCategorySelect = document.getElementById('editCategorySelect');
+    const editCustomCategoryInput = document.getElementById('editCustomCategoryInput');
+    
+    if (editCategorySelect && editCustomCategoryInput) {
+        editCategorySelect.addEventListener('change', function() {
+            if (this.value === 'Other') {
+                editCustomCategoryInput.style.display = 'block';
+                editCustomCategoryInput.required = true;
+                editCustomCategoryInput.focus();
+            } else {
+                editCustomCategoryInput.style.display = 'none';
+                editCustomCategoryInput.required = false;
+                editCustomCategoryInput.value = '';
+            }
+        });
+        
+        // Trigger on load in case 'Other' was somehow the initial state,
+        // though normally it would have saved as the custom name directly.
+        if (editCategorySelect.value === 'Other') {
+            editCategorySelect.dispatchEvent(new Event('change'));
+        }
+    }
+</script>
+
+{% endblock %}

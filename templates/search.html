@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Search - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Search</h2>
+    <form action="/search" method="GET">
+        <div class="form-row" style="margin-bottom: 24px;">
+            <input type="date" name="start_date" value="{{ start_date or '' }}">
+            <input type="date" name="end_date" value="{{ end_date or '' }}">
+            <select name="category">
+                <option value="">-- All Categories --</option>
+                {% for cat in all_categories %}
+                    <option value="{{ cat }}" {% if category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-row">
+            <input type="number" name="min_amount" placeholder="Min Amount (₹)" value="{{ min_amount or '' }}" step="0.01">
+            <input type="number" name="max_amount" placeholder="Max Amount (₹)" value="{{ max_amount or '' }}" step="0.01">
+            <button type="submit" class="btn-primary">Search</button>
+            <a href="/search" class="btn-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Search Results</h2>
+    {% if expenses %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense['date'] }}</td>
+                    <td><span class="badge badge-{{ expense['category']|lower }}">{{ expense['category'] }}</span></td>
+                    <td>₹{{ "%.2f"|format(expense['amount']) }}</td>
+                    <td>{{ expense['description'] or '—' }}</td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="/edit/{{ expense['id'] }}" class="btn-edit">Edit</a>
+                            <a href="/delete/{{ expense['id'] }}" class="btn-delete"
+                                onclick="return confirm('Delete this expense?')">Delete</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <h3>No results found</h3>
+            <p>Try adjusting your search filters or date range.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

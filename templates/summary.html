@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Summary - Expense Tracker{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <h2>Monthly Summary</h2>
+    <form action="/summary" method="GET" class="filter-form">
+        <select name="month" onchange="this.form.submit()">
+            {% for m in range(1, 13) %}
+                <option value="{{ m }}" {% if m == month|int %}selected{% endif %}>
+                    {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+                </option>
+            {% endfor %}
+        </select>
+        <input type="number" name="year" value="{{ year }}" min="2000" max="2100" onchange="this.form.submit()">
+    </form>
+</div>
+
+<div class="two-col" style="margin-bottom: 24px;">
+    <div class="stat-card">
+        <h3>Total Spent</h3>
+        <p class="big-total">₹<span class="counter-value" data-target="{{ total }}">0</span></p>
+    </div>
+
+    <div class="stat-card {% if remaining < 0 %}hero-high{% else %}hero-low{% endif %}">
+        <h3 style="color: rgba(255, 255, 255, 0.9) !important;">Remaining Budget</h3>
+        <p class="big-total" style="color: #FFFFFF !important;">
+            ₹<span class="counter-value" data-target="{{ remaining }}">0</span>
+        </p>
+        <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.8); margin-top: 8px;">Total Budget: ₹{{ "%.2f"|format(total_budget) }}</p>
+    </div>
+</div>
+
+<!-- Category Progress Bars -->
+<div class="card">
+    <h2>Category Budgets</h2>
+    {% if category_data %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
+            {% for data in category_data %}
+                <div class="progress-item">
+                    <div class="progress-header">
+                        <span class="progress-category">{{ data.category }}</span>
+                        <span class="progress-amounts">
+                            ₹{{ "%.2f"|format(data.spent) }} 
+                            {% if data.budget is not none %}
+                                / ₹{{ "%.2f"|format(data.budget) }}
+                            {% else %}
+                                <span style="font-size:0.8rem; color:var(--text-muted);">(No budget set)</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-fill {{ data.status }}" data-progress="{{ data.percent }}"></div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <h3>No data for this month</h3>
+            <p>Start adding expenses or set budgets to see your progress here.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Charts -->
+<div class="two-col">
+    <div class="card">
+        <h2>Category Distribution</h2>
+        {% if category_data and category_data|selectattr('spent', '>', 0)|list %}
+            <canvas id="doughnutChart"
+                data-labels='{{ category_data | selectattr("spent", ">", 0) | map(attribute="category") | list | tojson }}'
+                data-values='{{ category_data | selectattr("spent", ">", 0) | map(attribute="spent") | list | tojson }}'
+            ></canvas>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">🍩</div>
+                <h3>No expense data</h3>
+                <p>Add some expenses to see the distribution chart.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Budget vs Spent</h2>
+        {% if category_data and category_data|selectattr('budget', '!=', None)|list %}
+            <canvas id="barChart"
+                data-labels='{{ category_data | selectattr("budget", "!=", None) | map(attribute="category") | list | tojson }}'
+                data-spent='{{ category_data | selectattr("budget", "!=", None) | map(attribute="spent") | list | tojson }}'
+                data-budget='{{ category_data | selectattr("budget", "!=", None) | map(attribute="budget") | list | tojson }}'
+            ></canvas>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">💰</div>
+                <h3>No budgets set</h3>
+                <p>Head to the Budgets page to configure your limits.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Colors
+    const colors = ['#2563EB', '#8B5CF6', '#EC4899', '#14B8A6', '#F59E0B', '#EF4444', '#64748B'];
+    let chartInstances = [];
+
+    const updateChartTheme = () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#CBD5E1' : '#475569';
+        const gridColor = isDark ? '#334155' : '#E2E8F0';
+
+        Chart.defaults.color = textColor;
+        Chart.defaults.borderColor = gridColor;
+        
+        chartInstances.forEach(chart => {
+            chart.options.scales?.x && (chart.options.scales.x.grid.color = gridColor);
+            chart.options.scales?.x && (chart.options.scales.x.ticks.color = textColor);
+            chart.options.scales?.y && (chart.options.scales.y.grid.color = gridColor);
+            chart.options.scales?.y && (chart.options.scales.y.ticks.color = textColor);
+            chart.update();
+        });
+    };
+
+    const initCharts = () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        Chart.defaults.color = isDark ? '#CBD5E1' : '#475569';
+        Chart.defaults.borderColor = isDark ? '#334155' : '#E2E8F0';
+
+        // Doughnut Chart
+        var doughnutCanvas = document.getElementById('doughnutChart');
+        if (doughnutCanvas) {
+            var labels = JSON.parse(doughnutCanvas.getAttribute('data-labels'));
+            var data = JSON.parse(doughnutCanvas.getAttribute('data-values'));
+            chartInstances.push(new Chart(doughnutCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            }));
+        }
+
+        // Bar Chart
+        var barCanvas = document.getElementById('barChart');
+        if (barCanvas) {
+            var barLabels = JSON.parse(barCanvas.getAttribute('data-labels'));
+            var barSpent = JSON.parse(barCanvas.getAttribute('data-spent'));
+            var barBudget = JSON.parse(barCanvas.getAttribute('data-budget'));
+            
+            chartInstances.push(new Chart(barCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: barLabels,
+                    datasets: [
+                        {
+                            label: 'Budget',
+                            data: barBudget,
+                            backgroundColor: isDark ? '#334155' : '#E2E8F0',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Spent',
+                            data: barSpent,
+                            backgroundColor: '#2563EB',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            }));
+        }
+    };
+
+    window.addEventListener('themeChanged', () => {
+        updateChartTheme();
+        
+        // Specifically update the budget bar background color
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        chartInstances.forEach(chart => {
+            if(chart.config.type === 'bar') {
+                chart.data.datasets[0].backgroundColor = isDark ? '#334155' : '#E2E8F0';
+                chart.update();
+            }
+        });
+    });
+
+    // Run on load
+    initCharts();
+
+    // Fix for IDE linting: Apply progress bar widths via JS
+    document.querySelectorAll('.progress-fill').forEach(bar => {
+        const percent = bar.getAttribute('data-progress');
+        if (percent) {
+            // Slight timeout so the animation transition kicks in visually after page load
+            setTimeout(() => {
+                bar.style.width = percent + '%';
+            }, 100);
+        }
+    });
+
+    // Number Counter Animation
+    document.querySelectorAll('.counter-value').forEach(counter => {
+        const target = parseFloat(counter.getAttribute('data-target'));
+        const duration = 1200;
+        const startTime = performance.now();
+        const isNegative = target < 0;
+        const absTarget = Math.abs(target);
+        
+        const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+        
+        function animate(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easedProgress = easeOutQuart(progress);
+            const current = absTarget * easedProgress;
+            
+            const formatted = current.toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            counter.textContent = (isNegative ? '-' : '') + formatted;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    });
+</script>
+{% endblock %}

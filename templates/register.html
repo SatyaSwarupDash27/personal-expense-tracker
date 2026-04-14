@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Expense Tracker{% endblock %}
+
+{% block content %}
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="width: 100%; max-width: 420px; margin: 0; box-shadow: var(--shadow-lg);">
+        <h2 style="text-align: center; margin-bottom: 24px;">Create an Account</h2>
+    <form action="/register" method="POST">
+        <div class="form-row" style="flex-direction: column; gap: 16px;">
+            <input type="text" name="username" placeholder="Choose a Username" required style="width: 100%;">
+            <input type="password" name="password" placeholder="Create a Password" required style="width: 100%;">
+            <button type="submit" class="btn-primary" style="width: 100%;">Sign Up</button>
+        </div>
+    </form>
+        <p style="text-align: center; margin-top: 24px; color: var(--text-muted);">
+            Already have an account? <a href="/login" style="color: var(--primary); text-decoration: none; font-weight: 600;">Log In</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
