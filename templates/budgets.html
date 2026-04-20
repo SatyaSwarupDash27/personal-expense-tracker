@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Category Budgets - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Set Category Budgets</h2>
+    <form action="/budgets" method="GET" class="filter-form" style="margin-bottom: 24px;">
+        <select name="month" onchange="this.form.submit()">
+            {% for m in range(1, 13) %}
+                <option value="{{ m }}" {% if m == month|int %}selected{% endif %}>
+                    {{ ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] }}
+                </option>
+            {% endfor %}
+        </select>
+        <input type="number" name="year" value="{{ year }}" min="2000" max="2100" onchange="this.form.submit()">
+    </form>
+
+    <form action="/budgets" method="POST">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="year" value="{{ year }}">
+        
+        <div class="budget-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
+            {% for cat in categories %}
+            <div class="budget-card" style="background: var(--bg-card); border: 1px solid var(--border-default); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-md); transition: transform 0.2s ease;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h4 style="margin: 0; color: var(--text-heading); font-size: 1.1rem;">{{ cat }}</h4>
+                    <div style="font-weight: 700; color: var(--primary); font-size: 1.2rem;">
+                        ₹<span id="display_{{ loop.index }}">{{ "%.0f"|format(budget_dict.get(cat, 0)|float) }}</span>
+                    </div>
+                </div>
+                
+                <input type="range" class="budget-slider" id="slider_{{ loop.index }}"
+                       min="0" max="50000" step="500" 
+                       value="{{ budget_dict.get(cat, 0) }}" 
+                       oninput="document.getElementById('input_{{ loop.index }}').value = this.value; document.getElementById('display_{{ loop.index }}').innerText = parseFloat(this.value).toLocaleString('en-IN');"
+                       style="width: 100%; margin-bottom: 20px; accent-color: var(--primary); cursor: pointer;">
+                       
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; white-space: nowrap;">EXACT ₹</label>
+                    <input type="number" id="input_{{ loop.index }}" name="budget_{{ cat }}" value="{{ budget_dict.get(cat, '') }}" 
+                           placeholder="Unset" min="0" step="1"
+                           oninput="document.getElementById('slider_{{ loop.index }}').value = this.value; document.getElementById('display_{{ loop.index }}').innerText = parseFloat(this.value || 0).toLocaleString('en-IN');"
+                           style="width: 100%; padding: 8px 12px; font-size: 0.95rem;">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div style="text-align: right;">
+            <button type="submit" class="btn-primary" style="padding: 14px 32px; font-size: 1.05rem; box-shadow: var(--shadow-md);">Save Configuration</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
